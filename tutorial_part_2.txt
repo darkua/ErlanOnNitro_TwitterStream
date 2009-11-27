@@ -1,0 +1,9 @@
+So now that you have already know nitrogen basics lets see what he can do
+
+If already created the project twitter_stream, you can now remove it or move it to other other and get the full example already running.
+
+Clone this git repositorium
+<code>
+
+
+</code>
