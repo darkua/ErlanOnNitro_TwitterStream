@@ -32,6 +32,9 @@ stream(RequestMethod, Request, Processor) ->
 
 loop(RequestId, Processor) ->
     receive
+        {http, {RequestId, {{_, 401, _}, Headers, _}}} -> 
+            Processor ! {unauthorized, Headers};
+            %%{error, unauthorized, {Status, Headers}};
         {http, {RequestId, stream_start, Headers}} ->
             Processor ! {start, Headers},
             loop(RequestId, Processor);
@@ -62,6 +65,7 @@ loop(RequestId, Processor) ->
     
     
     %% end of streaming data
+    
       
 
     

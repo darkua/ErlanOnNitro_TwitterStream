@@ -1,4 +1,4 @@
--define(USERNAME,"YOUR TWITTER USERNAME").
--define(PASSWORD,"YOUR TWITTER PASSWORD").
+-define(USERNAME,"TWITTER USERNAME").
+-define(PASSWORD,"TWITTER PASSWORD").
 
--record(tweet,{id,screen_name,picture,text}).
+-record(tweet,{id,screen_name,picture,text,size}).

@@ -3,7 +3,251 @@ So now that you have already know nitrogen basics lets see what he can do
 If already created the project twitter_stream, you can now remove it or move it to other other and get the full example already running.
 
 Clone this git repositorium
-<code>
+<code> 
 
+git clone git://github.com/darkua/ErlanOnNitro_TwitterStream.git 
+
+cd ErlanOnNitro_TwitterStream
+
+./start.sh
 
 </code>
+Before you go and check your browser you need to enter your twitter credentials, needed for twitter stream. So please
+go to include/include.hrl and add your own credentials, and compile the project.
+
+Make sure you dont any other server running on port 8000, and go to your browser http://localhost:8000/
+
+If everything went ok, our example should be something like this :) #todo add image
+
+Now choose you favorite IDE, we are using textmate, and open the project dir.
+
+So this is ver similar with your previous nitrogen project, with some changes i recommend you to do. Open your project app file inside ebin dir.
+Here we have added templateroot so we can put all templates inside a different directory.
+
+We have created an include dir, where we will put all our include files, and on src, we divide the pages, from the libs, that will hold "hard-core" code.
+
+Now open /src/web/pages/web_index.erl. You can see that we almost dont do nothing here, because this is a static file, so we are only are adding the page title, and saying witch template will be used to render the page. All the code you can see its on index.html template file.
+
+Now open web_stream page.
+
+Lets check body function
+
+<code>
+body() ->
+	
+	%%builds the stream
+	Stream = start_stream(),
+	
+	%% the html to render
+	Body= [
+	    #panel{class="header", body=[
+    	    #h1{text="Erlang on Nitro - Twitter Stream"},
+    	    #panel{id=feedback,class="feedback", body=[
+    	        "Calling Twitter...pls wait..."
+    	    ]},
+    	    #panel{id=control,body=[#button{text="Stop", postback={stop,Stream}}]}
+    	]},
+    	#panel{id=stream,body=[]}
+	],
+	
+	wf:render(Body).
+</code>
+
+Here we are calling stream_start() to open stream connections and building the page html structure.
+
+Now check the start_stream() to see where is the magic.
+
+<code>
+start_stream()->
+Pid = wf:comet(fun()-> ?MODULE:loop() end),
+
+%%check for track
+case wf:get_path_info() of
+    []->
+        twitter_stream:sample(Pid);
+    Track->
+        twitter_stream:track(Track,Pid)
+end.
+</code>
+
+When calling wf:comet, we are building a comet connection to this page, and passing what function will be used to "comunicate" with the browser.
+Then we use wf:get_path_info() to get extra info on path, that we will use to call twitter, for example the twitter or hello keyword from the examples. All the connection to twitter stream api happens inside twitter_stream, and for now you can look at it as a black box that streams tweets for you, later you can check it out and try to understand what is happening.
+
+Now before checking loop function, its time to better undersand one of erlang top features, creating and communicating with processes. When we did wf:comet, what is happening in resume, is that we have spawned loop function into a new process, and now we can comunicate with it by sending to the Process Id messages. And to do that we just need to do this :
+	
+	<code>Pid ! message.</code>
+	
+In order to put a process waiting for messages is also very simple, just do this :
+
+	<code>
+		receive
+			Message->
+				...
+		end.
+	</code>
+
+When creating a receive block, you are telling erlang to wait there until he receives a new message, that he will try to match to execute the respective code.
+
+Now lets check a very simple example in order to better understand this. Open file spawn_example inside libs. You can see that we just have 2 functions, start and loop. On start we are spawning function loop, and registering the process with a name to be easier to call them after, like your fathers did with you :)
+
+Now go to erlang shell and call this:
+
+<code>
+
+(twitter_stream@localhost)2> spawn_example:start().
+true
+(twitter_stream@localhost)3> bot ! hello.
+Hello. How are you?
+hello
+(twitter_stream@localhost)4> 
+
+</code>
+
+Very simple and cool, but now try to call it again
+
+<code>
+(twitter_stream@localhost)15> bot ! hello.
+** exception error: bad argument
+     in operator  !/2
+        called as bot ! hello
+(twitter_stream@localhost)16> 
+</code>
+
+Humm... the reason it failed its very simple. After the process received the first message he executed the code matched to hello and it ended. So when you try to send a new message to it, it no longer exists, and it fails. So if you want to create process that after processing a message continues waiting for other you need to recall the function. So in the end of the loop add a call to loop.
+
+<code>
+
+loop()->
+    receive
+        hello ->
+            io:format("Hello. How are you?~n",[]);
+		_->
+			void
+    end,
+	loop().
+</code>
+
+Now lets try again
+
+<code>
+(twitter_stream@localhost)16> sync:go().
+Recompile: ./src/libs/spawn_example
+ok
+(twitter_stream@localhost)17> spawn_example:start().
+true
+(twitter_stream@localhost)18> bot ! hello.
+Hello. How are you?
+hello
+(twitter_stream@localhost)19> bot ! hello.
+Hello. How are you?
+hello
+</code>
+
+As you can see now the process no longer dies. Now lets see another great feature of erlang: hot code swapping, the ability to change the code without stopping the system.
+
+Try to change the text on the message, for example to:
+<code>
+...
+hello ->
+    io:format("Hot swapping rocks!~n",[])
+...
+</code>
+
+Now compile the code, and send it a message.
+
+<code>
+(twitter_stream@localhost)24> sync:go().
+Recompile: ./src/libs/spawn_example
+ok
+(twitter_stream@localhost)25> bot ! hello.
+Hello. How are you?
+hello
+</code>
+
+Humm... the old message is still there. The reason this happens is very simple. If we dont call "externally" by  prefixing the module name we are saying to erlang to “use this version of this method” and not the current version. So all we need to do is add the ?MODULE to the loop call, in the start function and also in the end of the loop.
+
+Now sync your code, and start your bot again. 
+
+<code>
+(twitter_stream@localhost)39> spawn_example:start().
+true
+(twitter_stream@localhost)40> bot ! hello.          
+Hot swapping rocks!
+hello
+</code>
+
+Now lets change the message again, to "Hot swapping really rocks". Sync your code again and send him a message.
+
+<code>
+(twitter_stream@localhost)41> sync:go().            
+Recompile: ./src/libs/spawn_example
+ok
+(twitter_stream@localhost)42> bot ! hello.
+Hot swapping rocks!
+hello
+(twitter_stream@localhost)43> bot ! hello.
+Hot swapping really rocks!
+hello
+(twitter_stream@localhost)44> 
+</code>
+
+As you can see the first message the bot receives the old code will be executed, since the process was blocked waiting for a message, but when it run again it will already be using the current version of the code. You can see code final version here #link (http://gist.github.com/raw/247001/c912f04cc9a4faedfda62cf8043d1ede23951e7c/spawn_example)
+
+
+Now back to our example, you can see exactly this happening with the loop function inside web_stream module. As you can see the loop function will be waiting for a subset of messages that twitter stream will send to him, and according to each we will be doing something different. Now what is important to understand here its how nitrogen now, comunicate with the client browser.
+	We are using wf:update(id, content) and wf:insert_top(id, content) and will update a dom element and insert on the top of a dome element. Nitrogen will translate this to the corresponding javascript, using jquery lib, and send it to the browser when we say him to do it. So everytime we call this function inside a comet loop nitrogen will add this "updates" to a buffer that will be sent to the browser when we call     wf:comet_flush(). 
+
+<code>
+loop()->
+    receive
+        {unauthorized,Message}->
+            io:format("~p~n",[Message]),
+            wf:update(feedback,"Your twitter credentials are wrong, check include.htr file!");
+        {start,_Message}->
+            wf:update(feedback,"Stream Running...");
+        {stream,Message}->
+    	    get_tweet_info(Message);
+    	{stream_end,_Message}->
+    	    restart_button(),
+    	    wf:update(feedback,"Stream Ended...");
+    	{stop,_Reason}->
+    	    restart_button(),
+            wf:update(feedback,"Stream Stoped...");
+    	{error,Reason}->
+    	    error_logger:error_msg("Error : ~p~n",[Reason]),
+    	    restart_button(),
+            wf:update(feedback,#panel{class="error",body=wf:f("Error : ~s !",[Reason])});
+    	Any->
+            error_logger:info_msg("ANY : ~p~n",[Any])
+    	after 55000 ->
+    	    wf:update(feedback,"to quiet for me...")
+    	end,
+    wf:comet_flush(),
+	?MODULE:loop().
+</code>
+
+With this simple code you have learn the basic blocks to create parallel computing, and the possibility to push content to users without the need to be constantly polling a service. And this is really cool because is all you need to create cool real-time / multi-user applications.
+
+Nitrogen is also great in making very easy the integration between erlang and javascript, making this way very easy the creation of appealing  and rich web applications. Check web_cloud example where we have created another visualization for twitter stream, but now its a cloud of twitter users, where the size of the pictures is related to the ratio following/followers, and you can click to see the status update.
+
+if you open web_cloud.erl, you can see that its very closed to web_stream, but now instead of building the html on the server we are passing the info to the the browser and will will build the dom with javascript. This can be achieved very easily with nitrogen using wf:wire constructor. As you can check on line 126 of web_cloud
+
+<code>
+wf:wire(wf:f("buildTweet({id:'~s',screen_name:'~s',picture:'~s',text:\"~s\",size:'~p'})",[
+                Tweet#tweet.id,Tweet#tweet.screen_name,Tweet#tweet.picture,wf_utils:js_escape(Tweet#tweet.text),Tweet#tweet.size])
+).
+</code>
+
+Mainly we are calling the js function buildTweet that you can find on /js/main.js a js object with all the tweet function. We also use another great nitrogen function wf:f, that helps you build complex strings.
+
+Another thing really useful is giving to an event different actions, like you can see in line 27.
+
+<code>
+	#panel{id=control,body=[#button{text="Stop", actions=#event{actions="$.growl('','Stream is Stoping...');"}, postback={stop,Stream}}]}
+</code>
+
+Before we were just giving a postback action to the button, but that is mainly a shortcut to actions parameter that can have one or many events. Inside each event you can define your postback, and you can also use actions parameters to execute javascript. So if you click on the stop button, we will be calling event({stop,Stream}) and also calling jquery-growl plugin that will show a message to the user.
+
+As you can imagine this is a very simple example of all you can do with nitrogen so please check nitrogen api #link( http://nitrogenproject.com/web/reference/api), and all the examples #link (http://nitrogenproject.com/web/samples) live on nitrogen page so you can better understand all the potencial on this great framework 
+
+

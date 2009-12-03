@@ -59,6 +59,7 @@ name_of_the_application.app is very important because it defines your applicatio
 	{description,  "App descritpion"},
 	{ vsn, "0.0.1" },
 	{mod, {name_of_the_application_app, []}},
+	{ applications, [ kernel, stdlib] },
 	{env, [
 		{platform, inets},
     	{port, 8000},
@@ -66,18 +67,14 @@ name_of_the_application.app is very important because it defines your applicatio
     	{sign_key, randomized},
     	{www_root, "./wwwroot"},
 		{templateroot,"./wwwroot/templates"},
-		{scratch_directory,'./wwwroot/scratch'}]},
-		{ applications, [ kernel, stdlib] }
+		{scratch_directory,'./wwwroot/scratch'}]},		
 ]}.
 
 This is an example of the app file, and you can read more about it here (#link). In resume its the file that describes you app to erlang vm, where you define its version, its environment vars, the modules, and the applications that your app will use.
 
 Nitrogen as an extra dir called wwwroot, where we will store all our static files (js, html templates, css, images,etc...)	
 
-So now lets create your first project, using a nitrogen script that will do most of the work for you (#todo check how to link the stuff). The idea is that on the end of this tutorial you have build a twitter stream client, so lets call our project twitter_stream. Open a terminal and type this:
-
-#todo check how we link the nitrogen bin to create the project
-
+So now lets create your first project, using a nitrogen script that will do most of the work for you (#todo check how to link the stuff). 
 
 
 <code> nitrogen create twitter_stream</code>
@@ -111,34 +108,33 @@ This happens because you have already a server running on the same port. You nee
 
 Now that you have the project running, lets try to understand how nitrogen can help you.
 
-Open name_of_the_application_app.erl in the source directory
+Open twitter_stream.erl in the source directory
 
-For now the most important in this page is understand the erlang behaviour concept. In resume tells
-erlang what "type" of module it is, validating if you are implementing the required methods, but i recommend
-you to read this (#link)
+For now the most important in this page is understand the erlang behaviour concept. In resume Behaviours are formalizations of common patterns. So when we say -behavior(application), erlang expects this module to behave like an application. You can read more about it here. In this case the application behaviour just needs a start and a stop method. Now open start.sh script.
 
-The application behaviour needs a start and a stop method, and mainly is what start you application.
+pre
+echo Starting TwitterStream.
+erl \
+	-name twitter_stream@localhost \
+	-pa ./ebin -pa ./include \
+	-s make all \
+	-eval "application:start(twitter_stream)"
+/pre
 
-If you open you start script start.sh you will see that what is happening there, is in resume opening a new erlang vm defining ebin and include directories and running you application
+In resume we are starting erlang vm, giving it a name, include and binary path, compiling the code, and start our application, that will execute the start function we saw on twitter_stream.erl. The rest for now its not important.
 
-application:start(twitter_stream)
-
-when this happens erlang will execute you start function in the application module twitter_stream_app:start().
-
-The rest for now its not important.
-
-So what happens when you go to http:localhost:8000/
+So what happens when you go to http:localhost:8000/ ?
 
 If you check you twitter_stream.app file you will see this entries 
 
 {platform, inets},
 {port, 8000},
 
-This is very important because this defines what http server you are going to use, and in witch port is going to run. So nitrogen is not a web server, but it starts for you one of 3 possible web servers (inets, mochiweb, and yaws), you can read more about all of them, but for now anyone will do it. This also means that ofcourse you dont need any ohter webserver (apache,etc...) to run your application :)
+This is very important because this defines what http server you are going to use, and in witch port is going to run. So nitrogen is not a web server, but it starts for you one of 3 possible web servers (inets, mochiweb, and yaws), you can read more about all of them, but for now we can use any. This also means that you dont need any other webserver (apache,etc...) to run your application.
 
 So when you enter the address the web server will receive the request and match it to a page.
-By default if you just call http://localhost:8000/ the request will be maped to http://localhost:8000/web/index/ and this will run the web_index module inside /src/pages. So if you request /web/home it will execute the module web_home.erl inside the pages dir.
-For now lets assume that this happens by magic :)
+By default if you just call http://localhost:8000/ the request will be mapped to http://localhost:8000/web/index/ and this will run the web_index module inside /src/pages. So if you request /web/home it will execute the module web_home.erl inside the pages dir.
+For now lets assume that this mapping /web/xpto -> web_xpto.erl happens by magic :)
 
 So now open the file web_index file.
 
@@ -158,40 +154,35 @@ body() ->
 	
 event(_) -> ok.
 
--module (web_index).
-The module definition is always required, and it defines your module name. Later you can execute module code by just calling web_index:body() for example. Very important Reminder : erlang does not have namespaces, so try to use always prefixes on your own modules to avoid conflicts. For example, lists -> BAD, my_lists-> GOOD.
+pre -module (web_index). /pre
+The module definition is always required, and it defines your module name. Very important Reminder : erlang does not have namespaces, so try to use always prefixes on your own modules to avoid conflicts. For example dont call your module lists.erl... use for example my_lists.erl.. and dont laf this happens to the best :)
 
--include_lib ("nitrogen/include/wf.inc").
-#todo diff from include_lib e o include
-The second line is including a nitrogen lib, so you can use nitrogen stuff. Just keep it :)
+pre -include_lib ("nitrogen/include/wf.inc"). /pre
+The second line is including a nitrogen lib, so you can use nitrogen stuff. Just keep it.
 
 -compile(export_all)
-#todo get real info about this
-In order to call function from a method from other module, you need to export the functions, to avoid that you can use this directive, but use it with caution, its best to export each method, like this: 
+In order to call function from a method from other module, you need to export the functions, to avoid that you can use this directive, but use it with caution, its best to export each one, like this: 
 
--export([
-	main/0,
-	body/0
-	title/0
-	event/0
-]).
+pre -export([ main/0, body/0, title/0, event/0]). /pre
 
-So module, include, and exports is what we can call the "header" of the module. Bellow is where the code really begins :)
+So module, include, and exports is what we can call the "header" of the module. Bellow is where the code really begins.
 
+pre
 main() -> 
 	#template { file="./wwwroot/template.html"}.
+/pre
 
 This function is needed in all your pages because its the one that will be executed when you requests this page.
-This function needs to return (in erlang return is always the last line of execution) a #template element. WTF? Was exactly what i tough in the first i saw this, but its very simple. In erlang exists a structure called record, this record is the closes thing you have to objects, and in the end is just a sugar syntax for tuples. I recommend you to read this, in order to best understand this brave new world (#link). So this records are used by nitrogen to create a serie of elements that will help you build web application with erlang. The template one is very important because it defines the template for this page. The file atribute is the location of your html page that will be used as template.
+This function needs to return (in erlang return is always the last line of execution) a #template element. In erlang exists a structure called record, this record is the closest thing you have to objects, and in the end is just a sugar syntax for tuples. So this records are used by nitrogen to create a serie of elements that will help you build web application with erlang. The template element will define the html template for this page. The file atribute is the location of your html page that will be used as template.
 
 Open wwwroot/template.html.
 
 
-As you can see its a perfect normal html page, with some weird stuff [[[page:title()]]] on it. As you probably are imagining right now, what will happen is that nitrogen parses this page, and will replace the [[[page:title()]]] for the output of the title function inside web_index. The reason to use page, and not web_index is that you can use a template for many pages, and this way it will execute the title of each calling page.
+As you can see its a perfect normal html page, with some weird stuff [[[page:title()]]] on it. As you probably are imagining right now, nitrogen will parse this page, and will replace the [[[page:title()]]] with the output of the title function inside web_index. The reason to use page, and not web_index is that you can use a template for many pages, and this way it will execute the title of each calling page.
 
-The other important part is the [[[script]]] element. This is where nitrogen will put all Javascript he creates, if you remove it, you will have troubles for sure :)
+The other important part is the [[[script]]] element. This is where nitrogen will put all javascript he creates. Just don't remove it or you will get into troubles :)
 
-Now back to web_index page, you can see that title function return a simple string, and body uses another nitrogen element. At this time i recommend you to go check all possible nitrogen elements (#link) so you can have an idea of what you can use. But in resume, you have an element for almost all html elements (div, li, table,input...). Your biggest problem is that nitrogen does not uses the same words, so for example a div is the #panel element... :S dont worry after a while you get use to it :)
+Now back to web_index page, you can see that title function return a simple string, and body uses another nitrogen element. At this time i recommend you to go check all possible nitrogen elements (#link) so you can have an idea of what you can use. But in resume, you have an element for almost all html elements (div, li, table,input...). The only problem with this approach is that nitrogen does not use always the same tags, so for example a span is #span element, but a div is the #panel element... :( but dont worry after a while you get use to it :)
 
 So lets try this, replace the body by this :
 
@@ -237,11 +228,11 @@ So now that you now the alphabet lets start making words :)
 
 
 -> Explain Nitrogen Actions
-To the interaction between user and application, nitrogen calls them actions. So lets add some action to our previous button.
+The interaction between user and application, nitrogen calls it actions. So lets add some actions to our previous button.
 
 #button{text="hello",actions=#event{type=click,postback=hello}}
 
-This will tell the buttom that on click, will execute the hello event.
+This will tell the button that on click, will execute the hello event.
 
 So the next thing you need to do is the hello event
 
@@ -253,7 +244,7 @@ event(_) -> ok.
 sync the code, click on hello button and go back to your erlang shell.
 
 You have just created your first client server interaction :). If you are using firebug you can easily see
-that this is done using an AJAX Event, where all the page info is send to the server, and mathed to the specific
+that this is done using an AJAX Event, where all the page info is send to the server, and matched to the specific
 event.
 
 Now lets grab some info
@@ -287,11 +278,14 @@ Dont forget to compile your changes, by running sync:go(), and now change url to
 As you can see it work exactly the same, the important thing to remember is that wf:q can only read the header parameters of the request,
 so for example if now you click on the button, you are creating another request, and input_id=hello from the previous one does not exist.
 
+
 Another great stuff about wf:q it lets you redefine GET or POST parameters, without overwrite the values, for example if you request this, http://localhost:8000/?input_id=hello&input_id=world you will get
 
 (nitrogen@localhost)9> ["hello","world"]
 
 and although this being great, it creates another problem. wf:q always returns a list, so you need to get the value or values out of the list, and in 99% of the times the list will have only one element, so you can use this :
+
+
 
 <code> hd(wf:q(input_id)) </code>
 
@@ -321,9 +315,9 @@ error-badarg
 </code>
 
 Here you have info of witch module and function create the error {web_index,body,0}, and also witch instruction erlang,hd,[[]], and in resume
-the problem is that you are trying to get the had of an empty list.
+the problem is that you are trying to get the head of an empty list.
 
-In order to solve this we will introduce on of the most commons structures in a erlang code, the case statement. As you probably have heard erlang does not have if statement, its false it has, but in the end you never need to use it, because the case really solves all your problems.
+In order to solve this we will introduce on of the most common structures in a erlang code, the case statement. As you probably have heard erlang does not have if statement, its false it has, but in the end you never need to use it, because the case really solves all your problems.
 
 So lets change the code to this:
 <code>
@@ -333,16 +327,16 @@ Input = case wf:q("input_id") of
             _->
                 hd(wf:q("input_id"))
         end,
-io:format("~p~n",[Input]),
+
 
 (...)
 </code>
 
-Case works like it is supposed to be, and it will evaluate the return of wf:q, and if the return is [], what happens when you dont have the parameter defined, will associate the string "Oops, not input!" to Input, or it it is something else (_) it will grab the value of the parameter.
+Case works like it is supposed to be, it will evaluate the return of wf:q and if it evaluates to [], what happens when you dont have the parameter defined, it will associate the string "Oops, not input!" to Input, or if it is something else (_) does not matter what, it will grab the head of the list.
 
 Since erlang lives a lot of pattern matching, _ option is a powerful arm for your arsenal :)
-Import reminder, and one of the most annoying stuff around erlang, is that the way you end your instruction (, or ; or .) its not a coincidence.
 
+Import reminder, and one of the most annoying stuff around erlang, is that the way you end your instruction (, or ; or .) its not a coincidence.
 In resume, the end of a function is indicated by the dot (.), but if your function uses pattern matching with the same number of arguments, like it happens on event, only the last one ends with the (.) all the others end with (;). 
 
 <code>
@@ -374,9 +368,3 @@ Compile and test, and as you can see its very easy to pass data inside events.
 Now that you have understood the basics around nitrogen and erlang its time to check nitrogen complex elements like for example the comet element.
 
 So lets jump to part 2 of this tutorial, where we will build in a step-by-step explanation a simple twitter client.
-
-
-
--> Explain the example in light detail
-
--> Resume ( Nice ERlang Toold,Nitrogen API, Mnesia, CouchDB, Joe Book )

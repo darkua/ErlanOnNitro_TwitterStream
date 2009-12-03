@@ -1,4 +1,4 @@
--module (web_stream).
+-module (web_cloud).
 -author("Sergio Veiga @ http://sergioveiga.com").
 -include_lib ("nitrogen/include/wf.inc").
 
@@ -7,7 +7,7 @@
 -compile(export_all).
 
 main() -> 
-	#template { file="stream.html"}.
+	#template { file="cloud.html"}.
 
 title() ->
 	"Twitter Stream powered by Erlang On Nitro".
@@ -24,9 +24,8 @@ body() ->
     	    #panel{id=feedback,class="feedback", body=[
     	        "Calling Twitter...pls wait..."
     	    ]},
-    	    #panel{id=control,body=[#button{text="Stop", postback={stop,Stream}}]}
-    	]},
-    	#panel{id=stream,body=[]}
+    	    #panel{id=control,body=[#button{text="Stop", actions=#event{actions="$.growl('','Stream is Stoping...');"}, postback={stop,Stream}}]}
+    	]}
 	],
 	
 	wf:render(Body).
@@ -91,9 +90,12 @@ get_tweet_info(Message)->
                     %% this is an delete message
                     error_logger:info_msg("Twitter error sent user undefined : ~p~n",[TweetPropList]);
                 _->
+                    %% diff between number of followers and following
+                    Ratio =  list_to_integer(proplists:get_value("followers_count",User)) - list_to_integer(proplists:get_value("friends_count",User)),
+                    
                     %%now we can "update" the record we already created, by copying its properties to the new one
-                    NewTweetRecord = TweetRecord#tweet{screen_name=proplists:get_value("screen_name",User),picture=proplists:get_value("profile_image_url",User)},
-            
+                    NewTweetRecord = TweetRecord#tweet{screen_name=proplists:get_value("screen_name",User),picture=proplists:get_value("profile_image_url",User),size=calculate_size(Ratio)},
+                    
                     add_tweet(NewTweetRecord)
             end;
             
@@ -103,22 +105,31 @@ get_tweet_info(Message)->
             wf:update(feedback,#panel{class="error",body=["Error with json!"]})
     end.    
 
+%% number of folowers less then following :(
+calculate_size(Ratio)  when Ratio < 0 ->
+    24;
+%% number of folowers equal to following :(
+calculate_size(Ratio)  when Ratio == 0 ->
+    24;
+%% number of folowers superior, so lets assume the max size bigger is 24, we give it to people having more then 1000 diff
+calculate_size(Ratio)  when Ratio > 0 ->
+    Size = ((Ratio * 24) div 1000),
+    case Size rem 24 of
+        X when X =:= Size ->
+            24+X;
+        _ ->
+            48
+    end.
+
 add_tweet(Tweet)->
-    wf:insert_top(stream,build_tweet(Tweet)).
-
-%% build a tweet
-build_tweet(Tweet) when is_record(Tweet,tweet) ->
-    #panel{id=Tweet#tweet.id, class="tweet clearfix", body=[
-            #image{image=Tweet#tweet.picture},
-            #panel{class="content", body=[
-                #link{url="http://twitter.com/"++Tweet#tweet.screen_name,text=Tweet#tweet.screen_name},
-                Tweet#tweet.text
-            ]}
-        ]}.
-
+    %%sending the info to js, so it can build the tweet
+    wf:wire(wf:f("buildTweet({id:'~s',screen_name:'~s',picture:'~s',text:\"~s\",size:'~p'})",[
+                    Tweet#tweet.id,Tweet#tweet.screen_name,Tweet#tweet.picture,wf_utils:js_escape(Tweet#tweet.text),Tweet#tweet.size])
+    ).
 
 restart_button()->
-    wf:update(control,#button{text="Restart", postback={restart}}).
+    wf:update(control,#button{text="Restart", actions=#event{actions="$.growl('','Stream is Restaring...');"},postback={restart}}).
+    
 
 %% events
 event({stop,Stream})->
@@ -126,7 +137,7 @@ event({stop,Stream})->
 
 event({restart})->
     Stream = start_stream(),
-    wf:update(control,#button{text="Stop", postback={stop,Stream}}),
+    wf:update(control,#button{text="Stop", actions=#event{actions="$.growl('','Stream is Stoping...');"}, postback={stop,Stream}}),
     wf:update(feedback,"Calling Twitter...pls wait...");
 
 event(_) -> ok.

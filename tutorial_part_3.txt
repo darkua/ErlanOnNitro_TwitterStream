@@ -1,0 +1,56 @@
+So now you that know already how to start developing your web projects using erlang, i want to present to you a resume of tools and applications that will make your life easier:
+
+Toolbar : a very simple visual toolbar for the most used tools in erlang. Type on your erlang shell toolbar:start(). You should see 4 icons representing this tools:
+
+Table Viewer: An ETS and MNESIA graphical table visualizer. With this you can view and change data inside a ets or mnesia table. On shell you can call it using tv:start(). #image http://img.skitch.com/20091202-nfyejf2hnsuf5qgda916ci74m.jpg
+
+Process Manager : A process manager used to inspect the state of an Erlang system. Call on erlang shell : pman:start(). X11 window will open showing the running processes for this node. #image http://img.skitch.com/20091202-ga3d16pjp7377m7ugqrmwj
+
+Debugger : A debugger for debugging and testing of Erlang programs. Call on erlang shell : debugger:start(). A window will open like this one #image http://img.skitch.com/20091202-m68ie1tk7etyew2cr3tth6a2fc.jpg
+jt7j.jpg
+
+Application Monitor : A utility used to supervise Applications executing on several Erlang nodes. Very useful when you start deploying cluster of application in different nodes :) On shell use appmon:start(). #image http://img.skitch.com/20091202-bw1t96316418qfkhbxpkr1tx58.jpg
+
+Other useful tips:
+
+Tip1 : if you have no internet to search, you can use erlang manual. Just type this in your terminal
+pre erl -man lists  /pre
+
+Tip2 : in order to let an application running in background, all you need is to add this to your start script
+pre 	-detached \ /pre
+
+Tip3 : you probably have notice that we are using error_logger module. This is the best way to deal with errors, and for example get warned by email each time your application is in trouble. Please read more here (http://www3.erlang.org/documentation/doc-5.4.2.1/lib/kernel-2.10.2/doc/html/error_logger.html)
+
+Data:
+
+In order to store data, we prefer skip it on the previous parts in order to keep it simple, but as you can imagine there are many options. Erlang has two system modules ets and dets that are used for efﬁcient storage of large numbers of Erlang terms. ETS is short for Erlang term storage, 
+and DETS is short for disk ets. ETS and DETS perform basically the same task: they provide large key-value lookup tables. ETS is memory resident, while DETS is disk resident. You can use ETS or DETS directly or you can use erlang database : MNESIA, a distributed DataBase Management System, with a relational/object hybrid data model.
+
+Another great way to store info in erlang is using one of the coolest erlang projects: couchdb is a document-oriented database that can be queried and indexed in a MapReduce fashion using JavaScript. In other words you dont need a schema to your data, and since its json its very easy to write/read. This is very useful for example when you are saving 3rd party data that you dont control, like tweets. In order to make the interaction between erlang and couchdb or any other service, before you start coding, look first at github (another great erlang project), where you can find a lot erlang code, that will make you life even easier.
+
+You can find a lot of stuff on the web about erlang, but here are some of our favorite bookmarks about erlang :
+
+http://erlang.org/doc/man/
+http://nitrogenproject.com/
+http://trapexit.org/
+http://www.planeterlang.org/
+http://blog.socklabs.com/
+http://yarivsblog.com/
+http://spawnlink.com/
+http://medevyoujane.com/
+http://metajack.im/
+http://anders.conbere.org/blog/
+http://kungfooguru.wordpress.com/
+http://beebole.com/erlang/en/
+http://erlanganswers.com/web/mcedemo
+http://schemecookbook.org/Erlang/AllRecipes
+http://www.undefined.org/c4-1/slides/slides.html
+http://jeremy.marzhillstudios.com/
+http://www.infoq.com/presentations/Systems-that-Never-Stop-Joe-Armstrong
+
+
+Resume :
+
+Erlang it has been around for a long time now, but the buzz around erlang started around 2007 with the publication of Programming Erlang: Software for a Concurrent World by Joe Armstrong #linkg http://pragprog.com/titles/jaerlang/programming-erlang by, erlang creator and the use of erlang in really projects, like ejabberd, couchdb or facebook chat system. With this buzz erlang community start to grow outside the telecom world in the web world.
+
+Erlang is not just another programming language for people like us that come from the OO, its new paradigm, a new way to think, a new form of coding. And we are deeply in love with it... we hope you come to.
